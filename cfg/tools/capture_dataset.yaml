@@ -3,8 +3,10 @@ mean_num_objects: 5
 min_num_objects: 2
 max_num_objects: 10
 
+num_train_images: 2
+num_test_images: 1
+
 save_raw: 0
-train_pct: 0.5
 vis: 1
 
 # sensor params
@@ -52,6 +54,9 @@ dataset:
       height: 7
     split:
       dtype: uint8
+    obj_ids:
+      dtype: uint32
+      height: 10
 
 # image proc params
 image_proc:
@@ -64,56 +69,58 @@ image_proc:
 
 # object parameters
 objects:
-  - crayons
-  - dasani
-  - glue
-  - pipe_clamp
-  - pencil_sharpeners
-  - chili_powder
-  - hammer
-  - watermelon
-  - peach
-  - pear
-  - spray_bottle
-  - lime
-  - banana
-  - sharpie
-  - zoink
-  - neutrogena
-  - dice
-  - cards
-  - phillipines_pouch
-  - saline_soothers
-  - large_bag_clip
-  - small_bag_clip
-  - clamp
-  - flashlight
-  - red_climbing_hold
-  - campbells_soup
-  - mayonnaise
-  - vaseline
-  - elmers_glue
-  - kind_bar
-  - arm_and_hammer_deodorant
-  - toothpaste
-  - mango
-  - sardines
-  - mushroom
-  - egg
-  - starfruit
-  - mouse_traps
-  - white_board_cleaner
-  - bialetti
-  - lighter
-  - can_of_corn
-  - cigar
-  - stamp
-  - toothbrushes
-  - blue_tape
-  - italian_seasoning
-  - clean_and_clear
-  - rock
-  - whale_tail
+  train:
+    - crayons
+    - dasani
+    - glue
+  test:
+    - pipe_clamp
+    - pencil_sharpeners
+    - chili_powder
+      #  - hammer
+      #  - watermelon
+      #  - peach
+      #  - pear
+      #  - spray_bottle
+      #  - lime
+      #  - banana
+      #  - sharpie
+      #  - zoink
+      #  - neutrogena
+      #  - dice
+      #  - cards
+      #  - phillipines_pouch
+      #  - saline_soothers
+      #  - large_bag_clip
+      #  - small_bag_clip
+      #  - clamp
+      #  - flashlight
+      #  - red_climbing_hold
+      #  - campbells_soup
+      #  - mayonnaise
+      #  - vaseline
+      #  - elmers_glue
+      #  - kind_bar
+      #  - arm_and_hammer_deodorant
+      #  - toothpaste
+      #  - mango
+      #  - sardines
+      #  - mushroom
+      #  - egg
+      #  - starfruit
+      #  - mouse_traps
+      #  - white_board_cleaner
+      #  - bialetti
+      #  - lighter
+      #  - can_of_corn
+      #  - cigar
+      #  - stamp
+      #  - toothbrushes
+      #  - blue_tape
+      #  - italian_seasoning
+      #  - clean_and_clear
+      #  - rock
+      #  - whale_tail
 
 # workspace params
 workspace:
@@ -128,9 +135,10 @@ workspace:
 
   objects:
     beveled_bin:
-      mesh_filename: /home/jmahler/Workspace/jeff_working/dex-net/data/objects/beveled_bin/mini_bin_extruded.obj
-      pose_filename: /home/jmahler/Workspace/jeff_working/dex-net/data/objects/beveled_bin/mini_bin_physical_pose_yumi1.tf
+      mesh_filename: /nfs/diskstation/projects/dex-net/objects/meshes/beveled_bin/mini_bin_extruded.obj
+      pose_filename: /nfs/diskstation/projects/dex-net/objects/meshes/beveled_bin/mini_bin_physical_pose_yumi1.tf
 
     plane:
-      mesh_filename: /home/jmahler/Workspace/jeff_working/dex-net/data/objects/plane/plane.obj
-      pose_filename: /home/jmahler/Workspace/jeff_working/dex-net/data/objects/plane/pose.tf  
+      mesh_filename: /nfs/diskstation/projects/dex-net/objects/meshes/plane/plane.obj
+      pose_filename: /nfs/diskstation/projects/dex-net/objects/meshes/plane/pose.tf
+

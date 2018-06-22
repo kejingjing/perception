@@ -130,11 +130,9 @@ if __name__ == '__main__':
     # parse args
     parser = argparse.ArgumentParser(description='Capture a dataset of RGB-D images from a set of sensors')
     parser.add_argument('output_dir', type=str, help='directory to save output')
-    parser.add_argument('--num_images', type=int, help='number of images to capture')
     parser.add_argument('--config_filename', type=str, default=None, help='path to configuration file to use')
     args = parser.parse_args()
     output_dir = args.output_dir
-    num_images = args.num_images
     config_filename = args.config_filename
 
     # make output directory
@@ -158,22 +156,17 @@ if __name__ == '__main__':
     sensor_configs = config['sensors']
     workspace_config = config['workspace']
     image_proc_config = config['image_proc']
+    num_train_images = config['num_train_images']
+    num_test_images = config['num_test_images']
 
     # read objects
-    train_pct = config['train_pct']
-    objects = config['objects']
-    num_objects = len(objects)
-    num_train = int(np.ceil(train_pct * num_objects))
-    num_test = num_objects - num_train
-    all_indices = np.arange(num_objects)
-    np.random.shuffle(all_indices)
-    train_indices = all_indices[:num_train]
-    test_indices = all_indices[num_train:]
-
-    num_train_images = int(np.ceil(train_pct * num_images))
-    all_image_indices = np.arange(num_images)
-    np.random.shuffle(all_image_indices)
-    train_image_indices = all_image_indices[:num_train_images]
+    train_objects = config['objects']['train']
+    test_objects = config['objects']['test']
+    all_objects = []
+    all_objects.extend(train_objects)
+    all_objects.extend(test_objects)
+    id_to_obj_name = { i : all_objects[i] for i in range(len(all_objects)) }
+    obj_name_to_id = { all_objects[i] : i for i in range(len(all_objects)) }
 
     # set random variable for the number of objects
     mean_num_objects = config['mean_num_objects']
@@ -184,7 +177,7 @@ if __name__ == '__main__':
 
     save_raw = config['save_raw']
     vis = config['vis']
-    
+
     # open gui
     gui = plt.figure(0, figsize=(8,8))
     plt.ion()
@@ -194,12 +187,12 @@ if __name__ == '__main__':
     plt.axis('off')
     plt.draw()
     plt.pause(GUI_PAUSE)
-    
+
     # read workspace bounds
     workspace_box = Box(np.array(workspace_config['min_pt']),
                         np.array(workspace_config['max_pt']),
                         frame='world')
-    
+
     # read workspace objects
     workspace_objects = {}
     for obj_key, obj_config in workspace_config['objects'].iteritems():
@@ -211,7 +204,7 @@ if __name__ == '__main__':
                                            wireframe=False)
         scene_obj = SceneObject(obj_mesh, obj_pose, obj_mat_props)
         workspace_objects[obj_key] = scene_obj
-        
+
     # setup each sensor
     datasets = {}
     sensors = {}
@@ -222,22 +215,22 @@ if __name__ == '__main__':
         # read params
         sensor_type = sensor_config['type']
         sensor_frame = sensor_config['frame']
-        
+
         # read camera calib
         tf_filename = '%s_to_world.tf' %(sensor_frame)
         T_camera_world = RigidTransform.load(os.path.join(sensor_config['calib_dir'], sensor_frame, tf_filename))
         sensor_poses[sensor_name] = T_camera_world
-        
+
         # setup sensor
         sensor = RgbdSensorFactory.sensor(sensor_type, sensor_config)
         sensors[sensor_name] = sensor
-        
+
         # start the sensor
         sensor.start()
         camera_intr = sensor.ir_intrinsics
         camera_intr = camera_intr.resize(im_rescale_factor)
         camera_intrs[sensor_name] = camera_intr        
-        
+
         # render image of static workspace
         scene = Scene()
         camera = VirtualCamera(camera_intr, T_camera_world)
@@ -257,11 +250,12 @@ if __name__ == '__main__':
         dataset_config['fields']['depth_ims']['width'] = camera_intr.width 
         dataset_config['fields']['segmasks']['height'] = camera_intr.height
         dataset_config['fields']['segmasks']['width'] = camera_intr.width 
-       
+
         # open dataset
         sensor_dataset_filename = os.path.join(output_dir, sensor_name)
         datasets[sensor_name] = TensorDataset(sensor_dataset_filename,
-                                              dataset_config)        
+                                              dataset_config)
+        datasets[sensor_name].add_metadata('obj_ids', id_to_obj_name)
 
         # save raw
         if save_raw:
@@ -276,22 +270,27 @@ if __name__ == '__main__':
             T_camera_world.save(camera_pose_filename)
 
     # collect K images
+    num_images = num_train_images + num_test_images
     for k in range(num_images):
         logging.info('Test case %d of %d' %(k, num_images))
 
         # set test case
-        train = 0
-        split = TEST_ID
-        if k in train_image_indices:
-            train = 1
-            split = TRAIN_ID
+        train = 1
+        split = TRAIN_ID
+        if k >= num_train_images:
+            train = 0
+            split = TEST_ID
+
+        num_objects = min(max(num_objs_rv.rvs(size=1)[0] + 1, min_num_objects), max_num_objects)
         if train:
-            num_objects = min(max(num_objs_rv.rvs(size=1)[0] + 1, min_num_objects), num_train)
-            obj_names = [objects[i] for i in np.random.choice(train_indices, size=num_objects, replace=False)]
+            num_objects = min(num_objects, len(train_objects))
+            obj_names = [train_objects[i] for i in np.random.choice(np.arange(len(train_objects)), size=num_objects, replace=False)]
+            obj_ids = [obj_name_to_id[name] for name in obj_names]
         else:
-            num_objects = min(max(num_objs_rv.rvs(size=1)[0] + 1, min_num_objects), num_test)
-            obj_names = [objects[i] for i in np.random.choice(test_indices, size=num_objects, replace=False)]
-            
+            num_objects = min(num_objects, len(test_objects))
+            obj_names = [test_objects[i] for i in np.random.choice(np.arange(len(test_objects)), size=num_objects, replace=False)]
+            obj_ids = [obj_name_to_id[name] for name in obj_names]
+
         # get human consent
         message = 'Please place %d objects:\n' %(num_objects)
         for name in obj_names:
@@ -359,6 +358,11 @@ if __name__ == '__main__':
             datapoint['color_ims'] = color_im.raw_data
             datapoint['depth_ims'] = depth_im.raw_data
             datapoint['segmasks'] = segmask.raw_data
+            obj_ids_vec = np.iinfo(np.uint32).max * np.ones(max_num_objects)
+            for i in range(len(obj_ids)):
+                obj_ids_vec[i] = obj_ids[i]
+            datapoint['obj_ids'] = obj_ids_vec
+
             dataset.add(datapoint)
 
             # save raw data
